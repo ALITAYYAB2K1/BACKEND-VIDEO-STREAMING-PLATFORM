@@ -2,6 +2,31 @@
 
 The `ApiError` class extends the built-in `Error` class in JavaScript to provide a more structured and informative error handling mechanism for API-related errors. Here's a breakdown of its components and benefits:
 
+```javascript
+class ApiError extends Error {
+  constructor(
+    statusCode,
+    message = "An unknown error occurred!",
+    stack = "",
+    errors = []
+  ) {
+    super(message);
+    this.statusCode = statusCode;
+    this.data = null;
+    this.message = message;
+    this.success = false;
+    this.errors = errors;
+
+    if (stack) {
+      this.stack = stack;
+    } else {
+      Error.captureStackTrace(this, this.constructor);
+    }
+  }
+}
+export { ApiError };
+```
+
 ### Components
 
 1. **Constructor Parameters**:
