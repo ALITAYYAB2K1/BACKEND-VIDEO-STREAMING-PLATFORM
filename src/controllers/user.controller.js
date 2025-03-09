@@ -295,6 +295,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   if (!user) {
     throw new ApiError(500, "Error while updating user");
   }
+  res.status(200).json(new ApiResponse(200, user, "User avatar updated"));
 });
 
 const updateUserCoverImage = asyncHandler(async (req, res) => {
@@ -320,6 +321,7 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
   if (!user) {
     throw new ApiError(500, "Error while updating user");
   }
+  res.status(200).json(new ApiResponse(200, user, "User cover image updated"));
 });
 
 export {
