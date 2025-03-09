@@ -12,11 +12,6 @@ const subscriptionSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
     },
-    status: {
-      type: String,
-      enum: ["SUBSCRIBED", "UNSUBSCRIBED"],
-      default: "UNSUBSCRIBED",
-    },
   },
   { timestamps: true }
 );
