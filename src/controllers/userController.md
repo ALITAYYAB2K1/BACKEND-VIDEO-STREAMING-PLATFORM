@@ -1,10 +1,71 @@
-# Detailed Explanation of `registerUser` Function
+# User Authentication API Documentation
 
 ## Overview
 
-The `registerUser` function is an asynchronous Express.js route handler responsible for registering a new user. It follows a structured approach to validate input, check for existing users, handle file uploads, and store user details in MongoDB. The function is wrapped with `asyncHandler` to handle errors efficiently.
+This document provides a detailed breakdown of the user authentication API, covering registration, login, and logout processes. It ensures secure authentication using JWT (JSON Web Tokens) and integrates Cloudinary for image uploads.
 
 ---
+
+## Dependencies
+
+The following dependencies are required for this module:
+
+- `jsonwebtoken`: Generates and verifies JWTs.
+- `asyncHandler`: Handles asynchronous errors efficiently.
+- `ApiError`: Custom error handling class for API responses.
+- `ApiResponse`: Formats API responses consistently.
+- `User` Model: Manages user authentication and stores data.
+- `Cloudinary`: Handles image uploads for avatars and cover images.
+
+---
+
+# 1. Generate Access & Refresh Tokens
+
+## Function Signature
+
+```javascript
+const generateAccessAndRefreshToken = async (userId) => { ... };
+```
+
+## Explanation
+
+### Step 1: Fetch User from Database
+
+```javascript
+const user = await User.findById(userId);
+```
+
+- Retrieves the user document based on the provided `userId`.
+
+### Step 2: Generate Tokens
+
+```javascript
+const refreshToken = user.generateRefreshToken();
+const accessToken = user.generateAccessToken();
+```
+
+- Creates a new `refreshToken` and `accessToken` using user-defined methods.
+
+### Step 3: Store Refresh Token in Database
+
+```javascript
+user.refreshToken = refreshToken;
+await user.save({ validateBeforeSave: false });
+```
+
+- Saves the newly generated `refreshToken` in the database.
+
+### Step 4: Return Tokens
+
+```javascript
+return { accessToken, refreshToken };
+```
+
+- Provides both tokens for further authentication.
+
+---
+
+# 2. User Registration
 
 ## Function Signature
 
@@ -12,47 +73,32 @@ The `registerUser` function is an asynchronous Express.js route handler responsi
 const registerUser = asyncHandler(async (req, res) => { ... });
 ```
 
-- `asyncHandler`: A middleware that automatically catches errors in asynchronous functions.
-- `req`: The request object containing user data and files.
-- `res`: The response object to send data back to the client.
+## Explanation
 
----
-
-## Step-by-Step Execution
-
-### 1. Extracting User Data from Request
+### Step 1: Extract User Data
 
 ```javascript
-const { fullName, email, username, password } = req.body;
+const { fullname, email, username, password } = req.body;
 ```
 
-- Extracts user-provided values (`fullName`, `email`, `username`, `password`) from the request body.
+- Extracts user details from the request body.
 
-### 2. Logging the Incoming Request
-
-```javascript
-console.log(`User registration request received for ${username}`);
-```
-
-- Logs the username to the console for debugging purposes.
-
-### 3. Validating Required Fields
+### Step 2: Validate Required Fields
 
 ```javascript
 if (
-  [fullName, email, username, password].some((field) => field?.trim() === "")
+  [fullname, email, username, password].some((field) => field?.trim() === "")
 ) {
   throw new ApiError(400, "All fields are mandatory");
 }
 ```
 
-- Checks if any field is empty or contains only whitespace.
-- If a required field is missing, an error is thrown with a 400 status code.
+- Ensures no required fields are missing.
 
-### 4. Checking for Existing User
+### Step 3: Check for Existing User
 
 ```javascript
-const existedUser = User.findOne({
+const existedUser = await User.findOne({
   $or: [{ email }, { username }],
 });
 if (existedUser) {
@@ -60,54 +106,31 @@ if (existedUser) {
 }
 ```
 
-- Searches MongoDB for a user with the same email or username.
-- If a match is found, an error is thrown.
+- Checks if a user with the same email or username already exists.
 
-### 5. Extracting File Paths
+### Step 4: Handle Image Uploads
 
 ```javascript
 const avatarLocalPath = req.files?.avatar[0]?.path;
-const coverImageLocalPath = req.files?.coverImage[0]?.path;
+let coverImageLocalPath = req.files?.coverImage?.[0]?.path;
 ```
 
-- Extracts local file paths for `avatar` and `coverImage` from the uploaded files.
-- Uses optional chaining (`?.`) to avoid errors if files are not uploaded.
+- Extracts file paths for avatar and cover images.
 
-### 6. Ensuring Avatar is Provided
-
-```javascript
-if (!avatarLocalPath) {
-  throw new ApiError(400, "Avatar is mandatory");
-}
-```
-
-- Throws an error if no avatar image is uploaded.
-
-### 7. Uploading Images to Cloudinary
+### Step 5: Upload Images to Cloudinary
 
 ```javascript
 const avatar = await uploadOnCloudinary(avatarLocalPath);
 const coverImage = await uploadOnCloudinary(coverImageLocalPath);
 ```
 
-- Uses `uploadOnCloudinary` to upload images.
-- Cloudinary returns a URL, which is used to store image locations in the database.
+- Uploads images to Cloudinary and stores the returned URLs.
 
-### 8. Handling Image Upload Errors
-
-```javascript
-if (!avatar) {
-  throw new ApiError(500, "Error while uploading images");
-}
-```
-
-- If the avatar upload fails, an internal server error (500) is thrown.
-
-### 9. Creating the User in Database
+### Step 6: Create User
 
 ```javascript
 const user = await User.create({
-  fullName,
+  fullname,
   email,
   username: username.toLowerCase(),
   password,
@@ -116,63 +139,140 @@ const user = await User.create({
 });
 ```
 
-- Inserts a new user into MongoDB with the provided details.
-- Converts `username` to lowercase for consistency.
-- Stores the avatar and cover image URLs.
+- Inserts a new user record into the database.
 
-### 10. Fetching Created User Without Sensitive Data
-
-```javascript
-const createdUser = await User.findById(user._id).select(
-  "-password -refreshToken"
-);
-```
-
-- Retrieves the newly created user but excludes sensitive fields (`password` and `refreshToken`).
-
-### 11. Handling User Creation Failure
-
-```javascript
-if (!createdUser) {
-  throw new ApiError(500, "Error while creating user");
-}
-```
-
-- If user creation fails, an error is thrown.
-
-### 12. Sending the Response
+### Step 7: Return Response
 
 ```javascript
 return res.status(201).json(new ApiResponse(201, createdUser, "User created"));
 ```
 
-- Sends a 201 status code indicating successful user creation.
-- Uses `ApiResponse` to standardize the response format.
+- Sends a success response with user data.
 
 ---
 
-## Error Handling
+# 3. User Login
 
-This function uses `asyncHandler` to catch and handle errors automatically. Errors are thrown using `ApiError`, ensuring proper status codes and messages are returned to the client.
+## Function Signature
+
+```javascript
+const loginUser = asyncHandler(async (req, res) => { ... });
+```
+
+## Explanation
+
+### Step 1: Extract Credentials
+
+```javascript
+const { username, email, password } = req.body;
+```
+
+- Retrieves login credentials.
+
+### Step 2: Validate Input
+
+```javascript
+if (!username || !email) {
+  throw new ApiError(400, "Username or email is mandatory");
+}
+```
+
+- Ensures username or email is provided.
+
+### Step 3: Find User
+
+```javascript
+const user = await User.findOne({
+  $or: [{ email }, { username: username.toLowerCase() }],
+});
+```
+
+- Searches for the user in the database.
+
+### Step 4: Validate Password
+
+```javascript
+const isPasswordValid = await user.isPasswordCorrect(password);
+if (!isPasswordValid) {
+  throw new ApiError(401, "Invalid credentials");
+}
+```
+
+- Checks if the password is correct.
+
+### Step 5: Generate Tokens
+
+```javascript
+const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+  user._id
+);
+```
+
+- Generates JWT tokens.
+
+### Step 6: Set Cookies and Respond
+
+```javascript
+return res
+  .status(200)
+  .cookie("accessToken", accessToken, { httpOnly: true, secure: true })
+  .cookie("refreshToken", refreshToken, { httpOnly: true, secure: true })
+  .json(
+    new ApiResponse(
+      200,
+      { user: loggedInUser, accessToken, refreshToken },
+      "User logged in"
+    )
+  );
+```
+
+- Stores tokens in HTTP-only cookies and sends a response.
 
 ---
 
-## Dependencies
+# 4. User Logout
 
-- `asyncHandler.js`: Wraps asynchronous functions to handle errors.
-- `ApiError.js`: Custom error class for structured error handling.
-- `User.model.js`: Mongoose model for user data storage.
-- `cloudinary.js`: Utility function for image uploads.
-- `ApiResponse.js`: Standardized response structure.
+## Function Signature
+
+```javascript
+const logoutUser = asyncHandler(async (req, res) => { ... });
+```
+
+## Explanation
+
+### Step 1: Remove Refresh Token
+
+```javascript
+await User.findByIdAndUpdate(
+  req.user._id,
+  { $set: { refreshToken: undefined } },
+  { new: true }
+);
+```
+
+- Deletes the refresh token from the database.
+
+### Step 2: Clear Cookies
+
+```javascript
+return res
+  .status(200)
+  .clearCookie("accessToken", { httpOnly: true, secure: true })
+  .clearCookie("refreshToken", { httpOnly: true, secure: true })
+  .json(new ApiResponse(200, {}, "User logged out"));
+```
+
+- Removes authentication cookies and sends a success response.
 
 ---
 
-## Summary
+# Summary
 
-- **Validates input fields** to ensure no empty values.
-- **Checks if the user already exists** using email or username.
-- **Uploads images to Cloudinary** for storage.
-- **Creates a new user in MongoDB** and removes sensitive fields before returning a response.
-- **Handles errors gracefully** using `asyncHandler` and `ApiError`.
+This module provides a robust user authentication system by:
 
-This ensures a robust, secure, and efficient user registration process. 🚀
+- **Registering Users**: Validates input, checks duplicates, uploads images, and saves data.
+- **Logging In Users**: Authenticates credentials and issues JWT tokens.
+- **Logging Out Users**: Removes tokens and clears cookies securely.
+- **Using Secure Cookies**: Enhances security with HTTP-only cookie storage.
+
+This ensures a scalable, secure authentication process with JWT integration. 🚀
