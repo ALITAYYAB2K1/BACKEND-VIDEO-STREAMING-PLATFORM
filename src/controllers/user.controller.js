@@ -7,10 +7,18 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 const generateAccessAndRefreshToken = async (userId) => {
   try {
     const user = await User.findById(userId);
+    if (!user) throw new ApiError(404, "User not found");
+
+    if (!user.generateRefreshToken || !user.generateAccessToken) {
+      throw new ApiError(500, "Token generation methods are missing");
+    }
+
     const refreshToken = user.generateRefreshToken();
     const accessToken = user.generateAccessToken();
+
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
+
     return { accessToken, refreshToken };
   } catch (error) {
     throw new ApiError(500, "Error while generating tokens");
@@ -101,8 +109,9 @@ const loginUser = asyncHandler(async (req, res) => {
   // return response if not send error
 
   const { username, email, password } = req.body;
-  if (!username || !email) {
-    throw new ApiError(400, "Username or email is mandatory");
+  console.log(req.body);
+  if (!email) {
+    throw new ApiError(400, "email is mandatory");
   }
 
   const user = await User.findOne({
