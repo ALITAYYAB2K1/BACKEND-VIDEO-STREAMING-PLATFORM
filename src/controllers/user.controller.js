@@ -110,12 +110,12 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const { username, email, password } = req.body;
   console.log(req.body);
-  if (!email) {
+  if (!(email || username)) {
     throw new ApiError(400, "email is mandatory");
   }
 
   const user = await User.findOne({
-    $or: [{ email }, { username: username.toLowerCase() }],
+    $or: [{ email }, { username }],
   });
   if (!user) {
     throw new ApiError(404, "User not found");
@@ -178,4 +178,57 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User logged out"));
 });
 
-export { registerUser, loginUser, logoutUser };
+// endpoint to refresh access token
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  //steps - algorithm
+  // get refresh token from cookie
+  // check if refresh token exists
+  // verify refresh token
+  // generate new access token
+  // save access token in cookie
+  // return response if not send error
+  const incomingRefreshToken =
+    req.cookies.refreshToken || req.body.refreshToken;
+  if (!incomingRefreshToken) {
+    throw new ApiError(401, "unauthorized request");
+  }
+  try {
+    const decodedToken = jwt.verify(
+      incomingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET,
+      (err) => {}
+    );
+    const user = await User.findById(decodedToken._id, (err, user) => {});
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+    if (user.refreshToken !== incomingRefreshToken) {
+      throw new ApiError(401, "refresh token is expired or user is logged out");
+    }
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+    const { accessToken, refreshToken } = await generateAccessAndRefreshToken(
+      user._id
+    );
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          {
+            accessToken,
+            refreshToken,
+          },
+          "Access token refreshed"
+        )
+      );
+  } catch (error) {
+    throw new ApiError(401, error?.message || "unauthorized request");
+  }
+});
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken };
