@@ -6,18 +6,16 @@ const subscriptionSchema = new Schema(
       // The user who is subscribing
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: true,
     },
     channel: {
       // The user who is being subscribed to
       type: Schema.Types.ObjectId,
       ref: "User",
-      required: true,
     },
     status: {
       type: String,
       enum: ["SUBSCRIBED", "UNSUBSCRIBED"],
-      default: "SUBSCRIBED",
+      default: "UNSUBSCRIBED",
     },
   },
   { timestamps: true }
