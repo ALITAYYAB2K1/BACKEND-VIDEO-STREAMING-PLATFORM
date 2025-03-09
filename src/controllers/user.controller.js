@@ -144,4 +144,11 @@ const loginUser = asyncHandler(async (req, res) => {
     );
 });
 
+const logoutUser = asyncHandler(async (req, res) => {
+  //steps - algorithm
+  // remove refresh token from database
+  // remove access token from cookie
+  // return response if not send error
+});
+
 export { registerUser, loginUser };
