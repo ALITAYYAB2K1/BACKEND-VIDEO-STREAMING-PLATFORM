@@ -250,7 +250,26 @@ const getCurrentUser = asyncHandler(async (req, res) => {
 });
 
 const updateAccountDetails = asyncHandler(async (req, res) => {
-  const { fullname, email, username } = req.body;
+  const { fullname, email } = req.body;
+  if (!fullname || !email) {
+    throw new ApiError(400, "All fields are mandatory");
+  }
+  const user = User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        fullname,
+        email,
+      },
+    },
+    {
+      new: true,
+    }
+  ).select("-password -refreshToken");
+  if (!user) {
+    throw new ApiError(500, "Error while updating user");
+  }
+  return res.status(200).json(new ApiResponse(200, user, "User updated"));
 });
 
 export {
