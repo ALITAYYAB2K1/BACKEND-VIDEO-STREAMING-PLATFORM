@@ -154,4 +154,7 @@ const user = await User.aggregate([
 
 ---
 
-This breakdown provides a **clear and detailed** understanding of **Sub-Pipelines in MongoDB Aggregation** and how they are used in this function. 🚀
+## Author
+
+**ALI TAYYAB**  
+WEB DEVELOPER
