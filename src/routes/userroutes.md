@@ -1,29 +1,48 @@
-# User Authentication API Documentation
+# Routes
 
-## Overview
+This module defines user-related routes using Express.js. It includes authentication, profile management, and user history operations. Each route is protected using middleware for security and file uploads.
 
-This document explains the user authentication API, which includes registration, login, and logout functionalities. It ensures secure user authentication using JWT (JSON Web Tokens) and integrates Cloudinary for image uploads.
+## Route Methods
 
-## Dependencies
-
-The following dependencies are required for this module:
-
-- `jsonwebtoken`: Used for generating and verifying JWTs.
-- `asyncHandler`: Handles asynchronous errors efficiently.
-- `ApiError`: Custom error handling class for API responses.
-- `ApiResponse`: Formats API responses consistently.
-- `User` Model: Manages user authentication and stores data.
-- `Cloudinary`: Handles image uploads for avatars and cover images.
+- `.get` - Retrieves data.
+- `.post` - Creates or updates data.
+- `.patch` - Modifies existing data.
 
 ---
 
-## Authentication Routes
+## Code Breakdown
 
-### Route: `POST /register`
+### Importing Dependencies
 
-Handles user registration, including file uploads.
+```javascript
+import { Router } from "express";
+import {
+  changeCurrentPassword,
+  getCurrentUser,
+  getUserChannelProfile,
+  getWatchHistory,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  registerUser,
+  updateAccountDetails,
+  updateUserAvatar,
+  updateUserCoverImage,
+} from "../controllers/user.controller.js";
+import { upload } from "../middlewares/multer.middleware.js";
+import { verifyJWT } from "../middlewares/auth.middleware.js";
+```
 
-#### Implementation:
+- `Router` is imported from Express to define modular routes.
+- User-related controller functions are imported.
+- `upload` middleware is used for handling file uploads.
+- `verifyJWT` middleware is used for authentication.
+
+---
+
+## Defining Routes
+
+### 1. **User Registration**
 
 ```javascript
 router.route("/register").post(
@@ -35,64 +54,111 @@ router.route("/register").post(
 );
 ```
 
-#### Process:
+- **POST `/register`** - Registers a new user.
+- Uses `multer` to handle file uploads (`avatar` & `coverImage`).
 
-1. **Uploads avatar and cover image** using Multer.
-2. **Validates user data** (e.g., username, email, password).
-3. **Checks for existing users** to prevent duplicates.
-4. **Stores user details** in the database.
-5. **Returns the newly created user** (excluding sensitive fields).
-
----
-
-### Route: `POST /login`
-
-Handles user login by verifying credentials and generating tokens.
-
-#### Implementation:
+### 2. **User Login**
 
 ```javascript
 router.route("/login").post(loginUser);
 ```
 
-#### Process:
+- **POST `/login`** - Logs in a user.
 
-1. **Extracts credentials** (username or email and password).
-2. **Finds the user** in the database.
-3. **Validates password** using a secure hashing method.
-4. **Generates JWT access and refresh tokens**.
-5. **Stores tokens in secure HTTP-only cookies**.
-6. **Returns authenticated user data**.
-
----
-
-### Route: `POST /logout`
-
-Handles user logout by removing the refresh token and clearing cookies.
-
-#### Implementation:
+### 3. **User Logout (Secure Route)**
 
 ```javascript
 router.route("/logout").post(verifyJWT, logoutUser);
 ```
 
-#### Process:
+- **POST `/logout`** - Logs out the current user.
+- Protected using `verifyJWT`.
 
-1. **Requires authentication** using JWT verification middleware.
-2. **Removes the refresh token** from the database.
-3. **Clears authentication cookies**.
-4. **Returns a success message confirming logout**.
+### 4. **Refresh Access Token**
+
+```javascript
+router.route("/refresh-token").post(refreshAccessToken);
+```
+
+- **POST `/refresh-token`** - Generates a new access token.
+
+### 5. **Change Password (Secure Route)**
+
+```javascript
+router.route("/change-password").post(verifyJWT, changeCurrentPassword);
+```
+
+- **POST `/change-password`** - Changes the current user’s password.
+- Requires authentication (`verifyJWT`).
+
+### 6. **Get Current User (Secure Route)**
+
+```javascript
+router.route("/current-user").get(verifyJWT, getCurrentUser);
+```
+
+- **GET `/current-user`** - Retrieves current user details.
+- Requires authentication.
+
+### 7. **Update Account Details (Secure Route)**
+
+```javascript
+router.route("/update-account").patch(verifyJWT, updateAccountDetails);
+```
+
+- **PATCH `/update-account`** - Updates user details.
+- Requires authentication.
+
+### 8. **Update User Avatar (Secure Route)**
+
+```javascript
+router
+  .route("/avatar")
+  .patch(verifyJWT, upload.single("avatar"), updateUserAvatar);
+```
+
+- **PATCH `/avatar`** - Updates user profile avatar.
+- Uses `multer` to handle file upload.
+
+### 9. **Update Cover Image (Secure Route)**
+
+```javascript
+router
+  .route("/cover-image")
+  .patch(verifyJWT, upload.single("/coverImage"), updateUserCoverImage);
+```
+
+- **PATCH `/cover-image`** - Updates user cover image.
+- Uses `multer` to handle file upload.
+
+### 10. **Get User Channel Profile (Secure Route)**
+
+```javascript
+router.route("/c/:username").get(verifyJWT, getUserChannelProfile);
+```
+
+- **GET `/c/:username`** - Retrieves a user’s channel profile.
+- Requires authentication.
+
+### 11. **Get Watch History (Secure Route)**
+
+```javascript
+router.route("/history").get(verifyJWT, getWatchHistory);
+```
+
+- **GET `/history`** - Fetches the user’s watch history.
+- Requires authentication.
 
 ---
 
-## Summary
+## Exporting the Router
 
-This module provides a secure user authentication system by:
+```javascript
+export default router;
+```
 
-- **Registering Users**: Validating input, checking duplicates, and saving data.
-- **Logging In Users**: Authenticating credentials and generating JWTs.
-- **Logging Out Users**: Removing tokens from storage and clearing cookies.
-- **Using Secure Cookies**: Enhancing security by storing tokens as HTTP-only cookies.
-- **Uploading Images**: Handling profile pictures and cover images efficiently.
+- Exports the router module for use in other parts of the application.
 
-This implementation ensures robust authentication with JWT and enhances user experience by managing tokens effectively.
+---
+
+This module efficiently handles user-related actions with authentication and file upload capabilities. 🚀
